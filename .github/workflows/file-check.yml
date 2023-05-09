@@ -12,17 +12,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-      - run: |
-          CHANGED_FILES=$(git diff --name-only $(git merge-base remotes/origin/main HEAD))
+          # Assume PRs are less than 50 commits
+          fetch-depth: 50
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v35
+        with:
+          files: config/locales/generated/*.yml
+      - name: Run step if any file(s) in the docs folder change
+        if: steps.changed-files-specific.outputs.any_changed == 'true'
+        run: |
+          echo "List all the translation files that have changed: ${{ steps.changed-files-specific.outputs.all_changed_files }}"
 
-          if echo "$CHANGED_FILES" | grep -q --include='*.yml' '^config/locales/generated/'; then
-            if echo "$WHITE_LIST" | grep -qw "${{ github.actor }}"; then
-              echo "User ${{ github.actor }} is allowed to make changes."
-            else
-              echo "Error: User ${{ github.actor }} is not authorized to make changes."
-              exit 1
-            fi
+          if echo "$WHITE_LIST" | grep -qw "${{ github.actor }}"; then
+            echo "User ${{ github.actor }} is allowed to make changes."
           else
-            echo "no changes."
+            echo "Error: User ${{ github.actor }} is not authorized to make changes."
+            exit 1
           fi
